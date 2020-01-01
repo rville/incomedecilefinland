@@ -1,0 +1,200 @@
+# Code for R
+
+
+#required packages
+library(foreign)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(ggthemr)
+library(ggimage)
+
+
+#data: https://stonecenter.gc.cuny.edu/research/lakner-milanovic-world-panel-income-distribution/
+#data description: http://pubdocs.worldbank.org/en/895211444154092188/Description-Lakner-Milanovic-database-2.pdf
+
+
+# name data file as leks
+fff= read.dta("leks.dta", convert.dates = TRUE, convert.factors = TRUE,
+         missing.type = FALSE,
+         convert.underscore = FALSE, warn.missing.labels = TRUE)
+
+
+
+ff = as.data.table(fff)
+
+# limit to year 2008 and observed incomes
+ffo = ff[bin_year %in% 2008,]
+ffo = ffo[!(RRinc %in% NA),]
+
+#order decile-country pairs by income
+ffo <- ffo[order(ffo$RRinc),]
+
+#calculate cumulative population
+ffo$cums <- cumsum(ffo$pop)
+
+
+#deciles
+ffg = copy(ffo)
+
+# label decice-country pairs to global income deciles
+ffg = mutate(ffg, les = ntile(ffg$cums,10))
+ffg = as.data.table(ffg)
+
+#calculate average income by global income decile
+ffg[, minc := mean(RRinc),by=.(les)]
+#leave only one observation
+ffyg = distinct(ffg, les, .keep_all = TRUE)
+ffyg$alue = "world"
+# xx is variable used in the graph
+ffyg$xx=ffyg$minc
+
+#finland income deciles
+fffing  = ffg[country %in% "Finland", ]
+fffing = as.data.table(fffing)
+fffing[, xx:=RRinc] 
+
+fffing$alue = "finland"
+
+#combine finland and rest of world
+fften = rbind(ffyg, fffing)
+#variable for graph ordering
+fften = mutate(fften, lest = ntile(fften$xx,20))
+
+fften = as.data.table(fften)
+
+#same for percentiles
+ffh=copy(ffo)
+
+ffgs = mutate(ffh, les = ntile(ffg$cums,100))
+ffgs = as.data.table(ffgs)
+ffgs[, minc := mean(RRinc),by=.(les)]
+ffygs = distinct(ffgs, les, .keep_all = TRUE)
+ffygs$alue = "world"
+ffygs$xx=ffygs$minc
+
+fffings  = ffgs[country %in% "Finland", ]
+fffings = as.data.table(fffings)
+fffings[, xx:=RRinc] 
+
+fffings$alue = "finland"
+
+ffhun = rbind(ffygs, fffings)
+ffhun = mutate(ffhun, lest = ntile(ffhun$xx,110))
+
+ffhun = as.data.table(ffhun)
+
+
+
+
+
+
+
+
+
+# Desiilien Keskitulo on laskettu keskiarvona kymmendesiiliin kuuluvien maa-desiili-joukkojen keskiarvoista. 
+#globe 
+image = "http://www.pngall.com/wp-content/uploads/1/World-Transparent.png"
+
+#finnish flag
+finn= "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcSZyth-HQb0uElAmvOiprsqz2CQOujHqqOY2v7WdWxoORz_72ii"
+finn = "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcRIK8vFERLFWVOZWUfZEnYiSkU72RXi7igMLMFpivvzijCANnMx"
+
+#graph theme
+ggthemr('earth', type = 'outer')
+
+#colors for finland and world
+suom  = hsv(.6,0.50,0.90)
+maa  = hsv(.15,0.80,0.90)
+
+
+iviiva = .6
+teksvari = "white"
+
+
+# graph for income deciles
+
+ggplot() +
+  geom_col(data=fften[alue %in% "world",], aes(x=lest, y=xx, fill = alue), width =.9) + 
+  geom_col(data=fften[alue %in% "finland",], aes(x=lest, y=xx, fill = alue), width =.9, alpha=1) + 
+
+  geom_image(data = subset(copy(fften), (alue %in% c("finland"))), aes(x= lest, y = -2700, image=finn), size =.025)+
+  geom_image(data = subset(copy(fften), (alue %in% c("world"))), aes(x= lest, y = -2700, image=image), size =.025)+
+  geom_point(data=fften[alue %in% "finland",], aes(x=lest, y=32000, fill = alue), alpha=0) + 
+  
+  geom_text(data=fften, aes(x=lest, y=xx+200, label = paste0(format(round(xx, 0), nsmall =0, decimal.mark=",", big.mark=" ")," $"  )),hjust=0, size=3) + 
+  geom_text(aes(x=6.5, y=10000, label = "Suomen köyhin kymmenys \non korkeatuloisempi kuin \nseitsemän kymmenestä \nkoko maailmassa \n"),hjust=0, size=3) + 
+  
+  geom_text(aes(x=8, y=24000, label = "Suomen korkeimman \ntulokymmenyksen keskitulot \novat n. 6 kertaa suuremman \nkuin köyhimmän \ntulokymmenyksen keskitulot"),hjust=0, size=3) + 
+  geom_text(aes(x=1.5, y=15000, label = "Maailman korkeimman tulokymmenyksen keskitulot \novat n. 100 kertaa suuremman kuin \nköyhimmän tulokymmenyksen keskitulot"),hjust=0, size=3) + 
+  
+  geom_segment( aes(y=4874, x=8.4, xend=8.4, yend=23500), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=28000, x=19.6, xend=9.7, yend=28000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+
+  geom_segment( aes(y=227, x=1.4, xend=1.4, yend=14500), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=20000, x=18.6, xend=2.8, yend=20000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  
+  geom_segment( aes(y=4874, x=7.6, xend=7.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=3730, x=6.6, xend=6.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+
+  geom_segment( aes(y=28000, x=19.6, xend=9.7, yend=28000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  
+  geom_text(data=fften[alue %in% "world",], aes(x=lest, y=-1200, label = paste0(format(round(les, 0), nsmall =0, decimal.mark=","),"/10")), size =3) + 
+  geom_text(data=fften[alue %in% "finland",], aes(x=lest, y=-1200, label = paste0(format(round(group, 0), nsmall =0, decimal.mark=","), "/10")), size =3) + 
+   scale_fill_manual(name="", breaks = c("finland", "world"),labels=c("Suomi","Maailma"), values= c(suom, maa),guide=guide_legend(ncol=2)) + 
+  labs(y = 'Arvio käytettävissä olevista vuosituloista vuonna 2008, dollaria per henkilö, ostovoimakorjattuina vuoden 2005 hintatasolla', x='Tulokymmenys') +
+  coord_flip() +
+  
+  labs(title = "Maailman ja Suomen tulokymmenysten keskitulot vuonna 2008", subtitle = "Kuva: Ville Seppälä, Data: Lakner & Milanovic (2013)")+
+
+  theme(text=element_text(lineheight = 0.1, size=30),
+        axis.title.x=element_text(size=8),
+        axis.text.x=element_blank(),
+       axis.title.y=element_text(size=13),
+        axis.text.y=element_blank(),
+        
+        plot.title=element_text(lineheight = 0.8, hjust=0.5, size=15),
+        plot.subtitle=element_text(lineheight = 0.8, size=10, hjust=0.5),
+        legend.title=element_text(""),
+        legend.text=element_text(size=15),
+        plot.caption=element_text(hjust=0,size=10,color=teksvari),
+        legend.position="none")
+ggsave("tulokym.png", height=7, width=7, units='in', dpi=300)
+
+
+#graph for percentiles (deciles for Finland)
+
+ggplot() +
+  geom_col(data=ffhun[alue %in% "world",], aes(x=lest, y=xx, fill = alue), width =.9) + 
+  geom_col(data=ffhun[alue %in% "finland",], aes(x=lest, y=xx, fill = alue), width =.9, alpha=1) + 
+
+  geom_image(data = subset(copy(ffhun), (alue %in% c("finland"))), aes(x= lest, y = -2700, image=finn), size =.007)+
+  geom_image(data = subset(copy(ffhun), (alue %in% c("world"))), aes(x= lest, y = -2700, image=image), size =.007)+
+  geom_point(data=ffhun[alue %in% "finland",], aes(x=lest, y=52000, fill = alue), alpha=0) + 
+  
+  geom_text(data=ffhun, aes(x=lest, y=xx+200, label = paste0(format(round(xx, 0), nsmall =0, decimal.mark=",", big.mark=" ")," $"  )),hjust=0, size=1.5) + 
+
+  geom_text(data=ffhun[alue %in% "world",], aes(x=lest, y=-1200, label = paste0(format(round(les, 0), nsmall =0, decimal.mark=","),"/100")), size =1.5) + 
+  geom_text(data=ffhun[alue %in% "finland",], aes(x=lest, y=-1200, label = paste0(format(round(group, 0), nsmall =0, decimal.mark=","), "/10")), size =1.5) + 
+  scale_fill_manual(name="", breaks = c("finland", "world"),labels=c("Suomi","Maailma"), values= c(suom, maa),guide=guide_legend(ncol=2)) + 
+  labs(y = 'Arvio käytettävissä olevista vuosituloista vuonna 2008, dollaria per henkilö, ostovoimakorjattuina vuoden 2005 hintatasolla', x='Tulokymmenys/tulopersentiili') +
+  coord_flip() +
+  
+  labs(title = "Maailman tulopersentiilien ja Suomen tulokymmenysten keskitulot vuonna 2008", subtitle = "Kuva: Ville Seppälä, Data: Lakner & Milanovic (2013)")+
+  
+  theme(text=element_text(lineheight = 0.1, size=30),
+        axis.title.x=element_text(size=8),
+        axis.text.x=element_blank(),
+        axis.title.y=element_text(size=13),
+        axis.text.y=element_blank(),
+        
+        plot.title=element_text(lineheight = 0.8, hjust=0.5, size=15),
+        plot.subtitle=element_text(lineheight = 0.8, size=10, hjust=0.5),
+        legend.title=element_text(""),
+        legend.text=element_text(size=15),
+        plot.caption=element_text(hjust=0,size=10,color=teksvari),
+        legend.position="none")
+ggsave("tulosata.png", height=9, width=7, units='in', dpi=300)
+
+
+ 
