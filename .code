@@ -3,6 +3,8 @@
 
 
 
+
+
 #required packages
 library(foreign)
 library(ggplot2)
@@ -30,6 +32,7 @@ ff = ff[!contcod %in% c("CHN", "IND", "IDN"),]
 
 
 
+
 ## 2008
 
 # limit to year 2008 and observed incomes
@@ -43,16 +46,46 @@ ffo <- ffo[order(ffo$RRinc),]
 #calculate cumulative population
 ffo$cums <- cumsum(ffo$pop)
 
-
-#deciles
 ffg = copy(ffo)
 
+ffz = ffg %>% 
+  filter(row_number() >= (n() ))
+sum = ffz$cums
+
+#creating income deciles
+ffg[, lesb := 1]
+ffg[cums > .1*sum, lesb := 2]
+ffg[cums > .2*sum, lesb := 3]
+ffg[cums > .3*sum, lesb := 4]
+ffg[cums > .4*sum, lesb := 5]
+ffg[cums > .5*sum, lesb := 6]
+ffg[cums > .6*sum, lesb := 7]
+ffg[cums > .7*sum, lesb := 8]
+ffg[cums > .8*sum, lesb := 9]
+ffg[cums > .9*sum, lesb := 10]
+
+
+
+
+
+
+ffg[, sumpop := sum(pop),by=.(lesb)]
+
+ffg = as.data.table(ffg)
+ffg[, tulo:= RRinc*pop]
+ffg[, sumtulo := sum(tulo),by=.(lesb)]
+
+#average income by decile
+ffg[, minc := sumtulo/sumpop,by=.(lesb)]
+
+
+#deciles
+
 # label decice-country pairs to global income deciles
-ffg = mutate(ffg, les = ntile(ffg$cums,10))
 ffg = as.data.table(ffg)
 
+ffg[,les:=lesb]
 #calculate average income by global income decile
-ffg[, minc := mean(RRinc),by=.(les)]
 #leave only one observation
 ffyg = distinct(ffg, les, .keep_all = TRUE)
 ffyg$alue = "world"
@@ -115,7 +148,6 @@ ffhun = as.data.table(ffhun)
 image = "http://www.pngall.com/wp-content/uploads/1/World-Transparent.png"
 
 #finnish flag
-finn= "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcSZyth-HQb0uElAmvOiprsqz2CQOujHqqOY2v7WdWxoORz_72ii"
 finn = "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcRIK8vFERLFWVOZWUfZEnYiSkU72RXi7igMLMFpivvzijCANnMx"
 
 #graph theme
@@ -151,19 +183,19 @@ ggplot() +
   geom_point(data=fften[alue %in% "finland",], aes(x=lest, y=32000, fill = alue), alpha=0) + 
   
   geom_text(data=fften, aes(x=lest, y=xx+200, label = paste0(format(round(xx, 0), nsmall =0, decimal.mark=",", big.mark=" ")," $"  )),hjust=0, size=3) + 
-  geom_label(aes(x=6.5, y=10000, label = "Suomen pienituloisin \nkymmenys on \nkorkeatuloisempi \nkuin 70% koko maailman \nväestöstä"),hjust=0, size=3, alpha=.2, color=teksvari) + 
+  geom_label(aes(x=7.5, y=10000, label = "Suomen pienituloisin \nkymmenys on \nkorkeatuloisempi \nkuin 80% koko maailman \nväestöstä"),hjust=0, size=3, alpha=.2, color=teksvari) + 
   
   geom_label(aes(x=8, y=24000, label = "Suomen korkeatuloisimman \nkymmenyksen keskitulot \novat n. 6 kertaa suuremmat \nkuin pienituloisimman \nkymmenyksen keskitulot"),hjust=0, size=3, alpha=.2, color=teksvari) + 
-  geom_label(aes(x=1.5, y=15000, label = "Maailman korkeatuloisimman kymmenyksen keskitulot \novat n. 100 kertaa suuremmat kuin \npienituloisimman kymmenyksen keskitulot"),hjust=0, size=3, alpha=.2, color=teksvari) + 
+  geom_label(aes(x=1.5, y=15000, label = "Maailman korkeatuloisimman kymmenyksen keskitulot \novat n. 95 kertaa suuremmat kuin \npienituloisimman kymmenyksen keskitulot"),hjust=0, size=3, alpha=.2, color=teksvari) + 
   
-  geom_segment( aes(y=4874, x=8.4, xend=8.4, yend=23500), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=4874, x=9.4, xend=9.4, yend=23500), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
   geom_segment( aes(y=28000, x=19.6, xend=9.7, yend=28000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
 
   geom_segment( aes(y=227, x=1.4, xend=1.4, yend=14500), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
   geom_segment( aes(y=20000, x=18.6, xend=2.8, yend=20000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
   
-  geom_segment( aes(y=4874, x=7.6, xend=7.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
-  geom_segment( aes(y=3730, x=6.6, xend=6.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=4874, x=8.6, xend=8.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
+  geom_segment( aes(y=3330, x=7.6, xend=7.6, yend=9400), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
 
   geom_segment( aes(y=28000, x=19.6, xend=9.7, yend=28000), size =iviiva, linetype = "solid", arrow=arrow(), color=teksvari) +
   
@@ -188,7 +220,7 @@ ggplot() +
         plot.caption=element_text(hjust=0,size=10,color=teksvari),
         legend.position="none")
 
-ggsave("tulokyme.png", height=7, width=7, units='in', dpi=300)
+ggsave("tulokymes.png", height=7, width=7, units='in', dpi=300)
 
 
 
