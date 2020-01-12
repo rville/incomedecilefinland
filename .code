@@ -106,36 +106,6 @@ fften = mutate(fften, lest = ntile(fften$xx,20))
 
 fften = as.data.table(fften)
 
-#same for percentiles
-ffh=copy(ffo)
-
-ffgs = mutate(ffh, les = ntile(ffg$cums,100))
-ffgs = as.data.table(ffgs)
-ffgs[, minc := mean(RRinc),by=.(les)]
-ffygs = distinct(ffgs, les, .keep_all = TRUE)
-ffygs$alue = "world"
-ffygs$xx=ffygs$minc
-
-fffings  = ffgs[country %in% "Finland", ]
-fffings = as.data.table(fffings)
-fffings[, xx:=RRinc] 
-
-fffings$alue = "finland"
-
-ffhun = rbind(ffygs, fffings)
-ffhun = mutate(ffhun, lest = ntile(ffhun$xx,110))
-
-ffhun = as.data.table(ffhun)
-
-
-
-
-
-
-
-
-
-
 
 
 
